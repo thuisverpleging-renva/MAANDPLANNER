@@ -612,7 +612,7 @@ Geef ALLEEN JSON, geen uitleg:
 {"schedule":{"1":{"Naam":"O"},...},"stats":{"Naam":{"O":12,"A":4,"V":14},...},"warnings":[]}`;
 
   try{
-    const res=await fetch("/.netlify/functions/planning",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
     const data=await res.json();
     const text=data.content?.map(i=>i.text||"").join("")||"";
     S.schedule=JSON.parse(text.replace(/```json|```/g,"").trim());
