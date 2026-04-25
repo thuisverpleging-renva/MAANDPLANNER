@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanAssist</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f0f4ff;--surface:#ffffff;--surface2:#e8eef8;--border:#d0daea;--border2:#b8c8e0;--text:#1e2d40;--text2:#4a6080;--text3:#8098b8;--blue:#3b82f6;--violet:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--cyan:#06b6d4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(135deg,#e8f0fe 0%,#f0f4ff 40%,#faf0ff 100%);background-attachment:fixed;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;user-select:none}
+.header{position:sticky;top:0;z-index:50;background:rgba(240,244,255,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);box-shadow:0 1px 12px rgba(59,130,246,.08)}
+.header-inner{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--violet));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.logo-text{font-weight:700;font-size:15px}
+.logo-sub{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
+.badge-admin{background:rgba(245,158,11,.15);color:#b45309;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:6px}
+.month-nav{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:12px;padding:6px 12px}
+.month-nav button{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;transition:color .15s}
+.month-nav button:hover{color:var(--text)}
+.month-name{font-size:14px;font-weight:600;min-width:140px;text-align:center;text-transform:capitalize}
+.tabs-bar{background:rgba(240,244,255,.8);border-bottom:1px solid var(--border)}
+.tabs-inner{max-width:1100px;margin:0 auto;padding:0 16px;display:flex;gap:4px;padding-top:8px;overflow-x:auto}
+.tab{background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;padding:10px 14px;border-radius:8px 8px 0 0;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom-color:var(--bg)}
+.content{max-width:1100px;margin:0 auto;padding:24px 16px}
+.view{display:none}.view.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.space-y>*+*{margin-top:16px}
+.space-y-sm>*+*{margin-top:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.h2{font-size:20px;font-weight:700}
+.subtext{font-size:13px;color:var(--text2);margin-top:3px}
+.label{font-size:11px;color:var(--text2);margin-bottom:5px;display:block}
+input[type=text],input[type=number],select{background:#f7f9ff;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:8px 12px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--blue)}
+input[type=color]{background:#f7f9ff;border:1px solid var(--border2);border-radius:8px;height:38px;width:100%;cursor:pointer;padding:2px}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);cursor:pointer}
+.btn{border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;padding:8px 16px;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-blue{background:var(--blue);color:white}.btn-blue:hover{background:#2563eb}
+.btn-green{background:var(--green);color:white}.btn-green:hover{background:#059669}
+.btn-ghost{background:var(--surface2);color:var(--text2)}.btn-ghost:hover{background:var(--border2);color:var(--text)}
+.btn-red{background:transparent;color:var(--red)}.btn-red:hover{background:rgba(239,68,68,.15);color:white}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-gradient{background:linear-gradient(135deg,var(--blue),var(--violet));color:white;border-radius:12px;padding:10px 20px;font-size:14px;box-shadow:0 4px 20px rgba(59,130,246,.25)}
+.btn-gradient:hover{opacity:.9}.btn-gradient:disabled{opacity:.5;cursor:not-allowed}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.badge-blue{background:rgba(59,130,246,.15);color:#93c5fd}
+.badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:white;flex-shrink:0}
+.save-status{font-size:11px}
+.save-saving{color:#6b7280}.save-saved{color:var(--green)}
+.info-box{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:14px}
+.info-box p{font-size:12px;color:#2563eb;line-height:1.6}
+.info-box .info-title{font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:5px}
+.link-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.link-url{background:#f7f9ff;border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:11px;font-family:monospace;color:var(--cyan);word-break:break-all;flex:1;min-width:0}
+.col-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.edit-form{display:flex;flex-direction:column;gap:12px}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead tr{background:var(--surface2)}
+th{padding:8px 4px;text-align:center;border-right:1px solid rgba(30,45,64,.6);color:var(--text2);font-weight:600;min-width:34px}
+th.col-header{position:sticky;left:0;background:var(--surface2);text-align:left;padding:8px 12px;min-width:130px;border-right:1px solid var(--border)}
+th.sat{color:#fb923c;background:rgba(124,45,18,.1)}
+th.sun{color:#f87171;background:rgba(127,29,29,.12)}
+td{padding:3px 2px;text-align:center;border-right:1px solid rgba(30,45,64,.4);border-bottom:1px solid rgba(30,45,64,.4)}
+td.row-header{position:sticky;left:0;background:#f7f9ff;padding:5px 10px;border-right:1px solid var(--border);text-align:left}
+tr:nth-child(even) td{background:rgba(220,230,248,.3)}
+tr:nth-child(even) td.row-header{background:#f7f9ff}
+.shift-cell{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;border-radius:5px;font-weight:700;font-size:11px}
+.conflict-bg td:not(.row-header){background:rgba(127,29,29,.12)!important}
+.totals-row td{background:var(--surface2)!important;font-size:10px;padding:4px 2px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
+.warn-box{background:rgba(254,243,199,.8);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:14px}
+.warn-box .warn-title{color:#b45309;font-size:13px;font-weight:700;margin-bottom:6px}
+.warn-box p{font-size:11px;color:#92400e;line-height:1.6}
+.day-config-grid{display:flex;flex-wrap:wrap;gap:8px}
+.day-cfg{display:flex;flex-direction:column;align-items:center;gap:3px}
+.day-cfg span{font-size:10px;color:var(--text3)}
+.day-cfg .dnum{font-size:11px;font-weight:700;color:var(--text2)}
+.day-cfg select{width:38px;font-size:11px;padding:3px 2px;text-align:center}
+
+/* Calendar for collega view */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day-label{text-align:center;font-size:11px;color:var(--text3);font-weight:600;padding:4px 0}
+.cal-cell{background:#ffffff;border:2px solid var(--border);border-radius:10px;text-align:center;padding:5px 2px;cursor:pointer;transition:border-color .12s,background .12s;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cal-cell.sun{background:rgba(254,226,226,.5);border-color:rgba(252,165,165,.6)}
+.cal-cell.dragging{border-color:var(--blue)!important;background:rgba(59,130,246,.1)!important}
+.cal-cell.selected-drag{border-color:var(--violet)!important}
+.cal-cell .day-num{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:3px;pointer-events:none}
+.cal-cell .wish-val{font-size:13px;font-weight:800;pointer-events:none;min-height:18px;line-height:1.2}
+.cal-cell:hover{border-color:var(--border2)}
+.cal-cell.blocked-cell{opacity:.5;cursor:not-allowed}
+
+/* Quick select bar */
+.quick-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.quick-btn{border:2px solid transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:800;padding:6px 14px;transition:all .12s;background:transparent}
+.quick-btn.active{transform:scale(1.05)}
+.quick-hint{font-size:11px;color:var(--text3);margin-left:auto}
+
+/* Collega view */
+.collega-view{max-width:620px;margin:0 auto;padding:20px 14px}
+.collega-header{text-align:center;padding:28px 16px 20px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(124,58,237,.12));border-radius:20px;margin-bottom:20px;border:1px solid rgba(59,130,246,.15)}
+.big-avatar{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:white;margin:0 auto 10px}
+.submit-btn{width:100%;padding:14px;font-size:16px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--violet));border:none;color:white;font-weight:700;cursor:pointer;margin-top:10px;transition:opacity .15s}
+.submit-btn:hover{opacity:.9}.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.success-screen{text-align:center;padding:48px 24px}
+.success-icon{font-size:56px;margin-bottom:16px}
+
+/* Section title */
+.section-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+
+/* Blocked days grid in team edit */
+.blocked-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.blocked-day-btn{border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--text2);font-size:12px;font-weight:600;padding:6px 4px;cursor:pointer;text-align:center;transition:all .15s}
+.blocked-day-btn.blocked{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red)}
+
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:600px){.grid-2,.grid-3{grid-template-columns:1fr}.month-name{min-width:90px;font-size:12px}.tab{padding:8px 10px;font-size:12px}}
+</style>
+</head>
+<body>
+<div class="loading" id="loading"><div class="spinner"></div><p style="color:var(--text2);font-size:13px">Laden...</p></div>
+<div id="app" style="display:none"></div>
+
+<script>
+// ─── Firebase ─────────────────────────────────────────────────────────────────
+firebase.initializeApp({apiKey:"AIzaSyCC_2Alj50fouNaYkxh9QXlYKJhPuc5Tqk",authDomain:"werkplanner-renva.firebaseapp.com",projectId:"werkplanner-renva",storageBucket:"werkplanner-renva.firebasestorage.app",messagingSenderId:"843096875195",appId:"1:843096875195:web:127124c2f04bf9522a899e"});
+const db=firebase.firestore();
+async function fbGet(k){try{const d=await db.collection("planning").doc(k).get();return d.exists?d.data().value:null}catch{return null}}
+async function fbSet(k,v){try{await db.collection("planning").doc(k).set({value:v})}catch(e){console.error(e)}}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const DAYS_NL=["Ma","Di","Wo","Do","Vr","Za","Zo"];
+const DAYS_FULL=["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"];
+const SHIFTS={O:{label:"Ochtend",color:"#3b82f6"},A:{label:"Avond",color:"#8b5cf6"},V:{label:"Vrij",color:"#ef4444",display:"✕"},"?":{label:"Open",color:"#d97706"}};
+
+// ─── URL mode ─────────────────────────────────────────────────────────────────
+const params=new URLSearchParams(window.location.search);
+const MODE=params.get("collega")?"collega":"admin";
+const COLLEGA_ID=MODE==="collega"?parseInt(params.get("collega")):null;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+// col.blockedShifts = { "1": ["A"], "3": ["O","A"] }  (dow 0=Sun..6=Sat -> we use 0=Mon..6=Sun mapping)
+// col.maxShiftsMonth = 20  (max working days per month)
+let S={
+  year:new Date().getFullYear(),month:5,tab:"team",
+  colleagues:[
+    {id:1,name:"Lisa Martens",type:"fulltime",color:"#0ea5e9",maxConsec:7,maxMonth:22,blockedShifts:{}},
+    {id:2,name:"Tom Devries",type:"fulltime",color:"#10b981",maxConsec:7,maxMonth:22,blockedShifts:{}},
+    {id:3,name:"Sara Peeters",type:"fulltime",color:"#f59e0b",maxConsec:7,maxMonth:22,blockedShifts:{}},
+    {id:4,name:"Bram Jacobs",type:"fulltime",color:"#ef4444",maxConsec:7,maxMonth:22,blockedShifts:{}},
+    {id:5,name:"Nora Claes",type:"hospital",color:"#8b5cf6",maxConsec:7,maxMonth:15,blockedShifts:{}},
+    {id:6,name:"Kevin Smits",type:"hospital",color:"#ec4899",maxConsec:7,maxMonth:15,blockedShifts:{}},
+  ],
+  wishes:{},dayConfigs:{},weekdayDefaults:{O:[4,4,4,4,4,3,3],A:[1,1,1,1,1,1,1]},editingId:null,schedule:null,generating:false,
+  saveStatus:null,planError:null,submitted:false,
+  // drag state for calendar
+  dragActive:false,dragValue:"V",
+};
+let saveTimer=null;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function showSave(s){S.saveStatus=s;renderSaveStatus();clearTimeout(saveTimer);if(s==="saved")saveTimer=setTimeout(()=>{S.saveStatus=null;renderSaveStatus()},2500)}
+function renderSaveStatus(){const els=document.querySelectorAll(".save-slot");els.forEach(el=>{el.innerHTML=S.saveStatus==="saving"?`<span class="save-status save-saving">↻ Opslaan...</span>`:S.saveStatus==="saved"?`<span class="save-status save-saved">✓ Opgeslagen</span>`:""})}
+function getDays(y,m){const days=[],d=new Date(y,m,1);while(d.getMonth()===m){days.push(new Date(d));d.setDate(d.getDate()+1)}return days}
+function defaultMorning(d){const idx=(d.getDay()+6)%7;return S.weekdayDefaults.O[idx]??4}
+function defaultEvening(d){const idx=(d.getDay()+6)%7;return S.weekdayDefaults.A[idx]??1}
+function getSlots(d){const cfg=S.dayConfigs[d.getDate()];return{morning:cfg?.morning??defaultMorning(d),evening:cfg?.evening??defaultEvening(d)}}
+function mName(y,m){return new Date(y,m,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"})}
+function av(col,size=32){const ini=col.name.split(" ").map(n=>n[0]).join("").slice(0,2);return`<div class="avatar" style="width:${size}px;height:${size}px;background:${col.color};font-size:${Math.max(9,size*.35)}px">${ini}</div>`}
+function shiftBadge(s){const sh=SHIFTS[s]||SHIFTS["?"];const lbl=sh.display||s;return`<span class="shift-cell" style="background:${sh.color}22;color:${sh.color}">${lbl}</span>`}
+function getBaseUrl(){return window.location.href.split("?")[0]}
+// dow: 0=Sun,1=Mon..6=Sat  -> we store as 0=Mon..6=Sun
+function jsDownToIdx(dow){return(dow+6)%7}
+
+async function saveColleagues(){showSave("saving");await fbSet("colleagues",JSON.stringify(S.colleagues));await fbSet("weekdayDefaults",JSON.stringify(S.weekdayDefaults));showSave("saved")}
+async function saveWishes(){showSave("saving");await fbSet(`wishes-${S.year}-${S.month}`,JSON.stringify(S.wishes));showSave("saved")}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
+function render(){document.getElementById("app").style.display="block";if(MODE==="collega")renderCollegaView();else renderAdminView()}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COLLEGA VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+let dragVal=null;
+
+function renderCollegaView(){
+  const app=document.getElementById("app");
+  const col=S.colleagues.find(c=>c.id===COLLEGA_ID);
+  if(!col){app.innerHTML=`<div style="text-align:center;padding:60px 20px"><p style="color:var(--text2)">Collega niet gevonden. Vraag een nieuwe link aan de planner.</p></div>`;return}
+  if(S.submitted){
+    app.innerHTML=`<div class="collega-view"><div class="success-screen">
+      <div class="success-icon">✅</div>
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Verstuurd!</h2>
+      <p style="color:var(--text2);font-size:14px">Je wensen voor <strong>${mName(S.year,S.month)}</strong> zijn opgeslagen.</p>
+      <button class="btn btn-ghost" style="margin-top:24px" onclick="S.submitted=false;render()">Aanpassen</button>
+    </div></div>`;
+    return;
+  }
+
+  const days=getDays(S.year,S.month);
+  const dayLabels=DAYS_NL.map(d=>`<div class="cal-day-label">${d}</div>`).join("");
+  const empties=Array.from({length:(days[0].getDay()+6)%7},()=>`<div></div>`).join("");
+
+  const cells=days.map(d=>{
+    const dow=d.getDay();
+    const idx=jsDownToIdx(dow);
+    const blocked=(col.blockedShifts||{})[idx]||[];
+    const key=`${col.id}-${d.getDate()}`;
+    const wish=S.wishes[key]||"";
+    const sh=SHIFTS[wish];
+    const color=sh?sh.color:"#475569";
+    const isSun=dow===0;
+    return`<div class="cal-cell ${isSun?"sun":""}"
+      data-day="${d.getDate()}" data-colid="${col.id}" data-blocked='${JSON.stringify(blocked)}'
+      onmousedown="startDrag(event,${d.getDate()},${col.id})"
+      onmouseenter="continueDrag(event,${d.getDate()},${col.id})"
+      ontouchstart="startDrag(event,${d.getDate()},${col.id})"
+      ontouchmove="handleTouchMove(event)"
+      >
+      <div class="day-num">${d.getDate()}</div>
+      <div class="wish-val" style="color:${color}">${wish==="V"?"✕":wish||"–"}</div>
+      ${blocked.length?`<div style="font-size:8px;color:var(--red);margin-top:1px">${blocked.map(b=>`${b}✗`).join(" ")}</div>`:""}
+    </div>`;
+  }).join("");
+
+  // Quick select bar
+  const qBar=`<div class="quick-bar">
+    <span style="font-size:11px;color:var(--text2);font-weight:600;margin-right:4px">Klik/sleep:</span>
+    ${["O","A","V","–"].map(v=>{
+      const sh=v==="–"?{color:"#475569"}:SHIFTS[v];
+      const active=dragVal===(v==="–"?"":v);
+      const lbl=v==="V"?"✕":v;
+      return`<button class="quick-btn ${active?"active":""}"
+        style="color:${sh.color};border-color:${active?sh.color:"transparent"};background:${active?sh.color+"20":"transparent"}"
+        onclick="setDragVal('${v==="–"?"":v}')">${lbl}</button>`;
+    }).join("")}
+    <span class="quick-hint">Selecteer een waarde, klik dan op dag(en)</span>
+  </div>`;
+
+  app.innerHTML=`<div class="collega-view">
+    <div class="collega-header">
+      <div class="big-avatar" style="background:${col.color}">${col.name.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+      <h1 style="font-size:20px;font-weight:800">${col.name}</h1>
+      <p style="color:var(--text2);font-size:13px;margin-top:4px">Wensen voor <span style="text-transform:capitalize;color:var(--text)">${mName(S.year,S.month)}</span></p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button class="btn btn-ghost btn-sm" onclick="prevMonthCollega()">‹ Vorige</button>
+        <button class="btn btn-ghost btn-sm" onclick="nextMonthCollega()">Volgende ›</button>
+      </div>
+    </div>
+    ${qBar}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+      <div class="cal-grid">${dayLabels}${empties}${cells}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:9px 12px">
+        ${Object.entries(SHIFTS).filter(([k])=>k!=="?").map(([k,v])=>`<span style="display:flex;align-items:center;gap:5px"><span style="background:${v.color}22;color:${v.color};font-weight:700;padding:2px 6px;border-radius:4px">${k==="V"?"✕":k}</span>${v.label}</span>`).join("")}
+        <span style="display:flex;align-items:center;gap:5px"><span style="background:rgba(100,116,139,.15);color:#64748b;font-weight:700;padding:2px 6px;border-radius:4px">–</span><span style="color:var(--text3)">Ochtend en/of Avond</span></span>
+        ${(col.blockedShifts&&Object.keys(col.blockedShifts).length)?`<span style="color:var(--red)">✗ = geblokkeerd door planner</span>`:""}
+      </div>
+    </div>
+    <button class="submit-btn" onclick="submitWishes()">✓ Wensen versturen naar planner</button>
+  </div>`;
+
+  // prevent text selection during drag
+  document.addEventListener("mouseup",endDrag);
+  document.addEventListener("touchend",endDrag);
+}
+
+function setDragVal(v){dragVal=v;if(MODE==="collega")renderCollegaView()}
+function startDrag(e,day,colId){
+  e.preventDefault();
+  S.dragActive=true;
+  applyDrag(day,colId);
+}
+function continueDrag(e,day,colId){
+  if(!S.dragActive)return;
+  applyDrag(day,colId);
+}
+function handleTouchMove(e){
+  const touch=e.touches[0];
+  const el=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(!el)return;
+  const cell=el.closest(".cal-cell");
+  if(!cell)return;
+  const day=parseInt(cell.dataset.day);
+  const colId=parseInt(cell.dataset.colid);
+  if(day&&colId)applyDrag(day,colId);
+}
+function endDrag(){S.dragActive=false}
+
+function applyDrag(day,colId){
+  if(dragVal===null)return;
+  const col=S.colleagues.find(c=>c.id===colId);
+  if(!col)return;
+  // check blocked
+  const d=new Date(S.year,S.month,day);
+  const idx=jsDownToIdx(d.getDay());
+  const blocked=(col.blockedShifts||{})[idx]||[];
+  if(dragVal&&blocked.includes(dragVal))return; // can't set blocked shift
+  const key=`${colId}-${day}`;
+  S.wishes={...S.wishes,[key]:dragVal};
+  // update cell visually without full re-render
+  const cell=document.querySelector(`.cal-cell[data-day="${day}"][data-colid="${colId}"]`);
+  if(cell){
+    const sh=SHIFTS[dragVal];
+    const color=sh?sh.color:"#475569";
+    const wv=cell.querySelector(".wish-val");
+    if(wv){wv.style.color=color;wv.textContent=dragVal==="V"?"✕":dragVal||"–"}
+  }
+}
+
+async function submitWishes(){
+  const btn=document.querySelector(".submit-btn");
+  if(btn){btn.disabled=true;btn.textContent="Versturen..."}
+  await fbSet(`wishes-${S.year}-${S.month}`,JSON.stringify(S.wishes));
+  S.submitted=true;render();
+}
+async function prevMonthCollega(){let m=S.month-1,y=S.year;if(m<0){m=11;y--}S.month=m;S.year=y;const sw=await fbGet(`wishes-${S.year}-${S.month}`);S.wishes=sw?JSON.parse(sw):{};S.submitted=false;render()}
+async function nextMonthCollega(){let m=S.month+1,y=S.year;if(m>11){m=0;y++}S.month=m;S.year=y;const sw=await fbGet(`wishes-${S.year}-${S.month}`);S.wishes=sw?JSON.parse(sw):{};S.submitted=false;render()}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderAdminView(){
+  const app=document.getElementById("app");
+  app.innerHTML=`
+    <div class="header"><div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">P</div>
+        <div><div class="logo-text">PlanAssist <span class="badge-admin">Beheer</span></div>
+          <div class="logo-sub"><span class="online-dot"></span>Verbonden met cloud</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="save-slot"></span>
+        <div class="month-nav">
+          <button onclick="prevMonth()">‹</button>
+          <span class="month-name">${mName(S.year,S.month)}</span>
+          <button onclick="nextMonth()">›</button>
+        </div>
+      </div>
+    </div></div>
+    <div class="tabs-bar"><div class="tabs-inner">
+      <button class="tab ${S.tab==="team"?"active":""}" onclick="setTab('team')">👥 Team</button>
+      <button class="tab ${S.tab==="links"?"active":""}" onclick="setTab('links')">🔗 Collega-links</button>
+      <button class="tab ${S.tab==="wensen"?"active":""}" onclick="setTab('wensen')">📋 Wensen</button>
+      <button class="tab ${S.tab==="planning"?"active":""}" onclick="setTab('planning')">📅 Planning</button>
+    </div></div>
+    <div class="content">
+      <div class="view ${S.tab==="team"?"active":""}" id="v-team"></div>
+      <div class="view ${S.tab==="links"?"active":""}" id="v-links"></div>
+      <div class="view ${S.tab==="wensen"?"active":""}" id="v-wensen"></div>
+      <div class="view ${S.tab==="planning"?"active":""}" id="v-planning"></div>
+    </div>`;
+  renderActiveTab();
+}
+
+function renderActiveTab(){
+  const t=S.tab;
+  if(t==="team"){const el=document.getElementById("v-team");if(el)el.innerHTML=renderTeam()}
+  if(t==="links"){const el=document.getElementById("v-links");if(el)el.innerHTML=renderLinks()}
+  if(t==="wensen"){const el=document.getElementById("v-wensen");if(el)el.innerHTML=renderWensenOverzicht()}
+  if(t==="planning"){const el=document.getElementById("v-planning");if(el)el.innerHTML=renderPlanning()}
+}
+function setTab(t){S.tab=t;render()}
+
+// ─── TEAM ─────────────────────────────────────────────────────────────────────
+function renderTeam(){
+  const cards=S.colleagues.map(col=>{
+    if(S.editingId===col.id)return renderEditForm(col);
+    return`<div class="col-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">${av(col,36)}
+        <div>
+          <div style="font-weight:700;font-size:15px">${col.name}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <span class="badge ${col.type==="fulltime"?"badge-blue":"badge-purple"}">${col.type==="fulltime"?"Fulltime":"Bijbaan"}</span>
+            <span style="font-size:11px;color:var(--text3)">max ${col.maxConsec} op rij · max ${col.maxMonth}/maand</span>
+            ${Object.keys(col.blockedShifts||{}).length?`<span style="font-size:11px;color:var(--red)">geblokkeerde dagen ✓</span>`:""}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="startEdit(${col.id})">Bewerken</button>
+        <button class="btn btn-red" onclick="removeCol(${col.id})">✕</button>
+      </div>
+    </div></div>`;
+  }).join("");
+  return`<div class="space-y">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div><div class="h2">Team Beheer</div><div class="subtext">Vaste regels per collega</div></div>
+      <button class="btn btn-blue" onclick="addCol()">+ Collega toevoegen</button>
+    </div>
+    <div class="space-y-sm">${cards}</div>
+  </div>`;
+}
+
+function renderEditForm(col){
+  const bs=col.blockedShifts||{};
+  // blocked shift checkboxes per day of week
+  const dayRows=DAYS_FULL.map((dayName,idx)=>{
+    const blockedHere=bs[idx]||[];
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;min-width:90px;color:var(--text2)">${dayName}</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+        <input type="checkbox" ${blockedHere.includes("O")?"checked":""} onchange="toggleBlocked(${col.id},${idx},'O',this.checked)"> Geen ochtend
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+        <input type="checkbox" ${blockedHere.includes("A")?"checked":""} onchange="toggleBlocked(${col.id},${idx},'A',this.checked)"> Geen avond
+      </label>
+    </div>`;
+  }).join("");
+
+  return`<div class="col-card"><div class="edit-form">
+    <div class="grid-2">
+      <div><label class="label">Naam</label><input type="text" value="${col.name}" onchange="editField('name',this.value)"></div>
+      <div><label class="label">Type</label><select onchange="editField('type',this.value)">
+        <option value="fulltime" ${col.type==="fulltime"?"selected":""}>Fulltime (Zelfstandige)</option>
+        <option value="hospital" ${col.type==="hospital"?"selected":""}>Bijbaan (Ziekenhuis)</option>
+      </select></div>
+    </div>
+    <div class="grid-3">
+      <div><label class="label">Kleur</label><input type="color" value="${col.color}" onchange="editField('color',this.value)"></div>
+      <div><label class="label">Max ochtendshiften op rij</label><input type="number" min="1" max="31" value="${col.maxConsec}" onchange="editField('maxConsec',parseInt(this.value)||1)"></div>
+      <div><label class="label">Max shifts per maand</label><input type="number" min="1" max="31" value="${col.maxMonth||22}" onchange="editField('maxMonth',parseInt(this.value)||22)"></div>
+    </div>
+    <div>
+      <div class="section-title">Geblokkeerde diensten per weekdag</div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Vink aan welke dienst nooit mag op die dag (bv. nooit avond op woensdag)</p>
+      ${dayRows}
+    </div>
+    <div style="display:flex;gap:8px;padding-top:4px">
+      <button class="btn btn-green" onclick="saveEdit()">Opslaan</button>
+      <button class="btn btn-ghost" onclick="cancelEdit()">Annuleren</button>
+    </div>
+  </div></div>`;
+}
+
+function toggleBlocked(colId,dayIdx,shift,checked){
+  S.colleagues=S.colleagues.map(c=>{
+    if(c.id!==colId)return c;
+    const bs={...(c.blockedShifts||{})};
+    const curr=bs[dayIdx]||[];
+    if(checked){if(!curr.includes(shift))bs[dayIdx]=[...curr,shift]}
+    else{bs[dayIdx]=curr.filter(s=>s!==shift);if(!bs[dayIdx].length)delete bs[dayIdx]}
+    return{...c,blockedShifts:bs};
+  });
+}
+function startEdit(id){S.editingId=id;renderActiveTab()}
+function cancelEdit(){S.editingId=null;renderActiveTab()}
+function editField(f,v){S.colleagues=S.colleagues.map(c=>c.id===S.editingId?{...c,[f]:v}:c)}
+function saveEdit(){S.editingId=null;saveColleagues()}
+function removeCol(id){if(!confirm("Collega verwijderen?"))return;S.colleagues=S.colleagues.filter(c=>c.id!==id);saveColleagues()}
+function addCol(){const n={id:Date.now(),name:"Nieuwe collega",type:"fulltime",color:"#64748b",maxConsec:7,maxMonth:22,blockedShifts:{}};S.colleagues=[...S.colleagues,n];S.editingId=n.id;saveColleagues()}
+
+// ─── LINKS ────────────────────────────────────────────────────────────────────
+function renderLinks(){
+  const base=getBaseUrl();
+  const cards=S.colleagues.map(col=>{
+    const link=`${base}?collega=${col.id}`;
+    return`<div class="link-card">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">${av(col,36)}
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:700;margin-bottom:6px">${col.name}</div>
+          <div class="link-url" id="link-${col.id}">${link}</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="copyLink(${col.id},'${link}')" id="copybtn-${col.id}">Kopieer link</button>
+    </div>`;
+  }).join("");
+  return`<div class="space-y">
+    <div><div class="h2">Collega-links</div><div class="subtext">Elke collega heeft een eigen link — ze zien en wijzigen alleen hun eigen wensen</div></div>
+    <div class="info-box"><div class="info-title">Hoe werkt het?</div>
+      <p>1. Kopieer de link van een collega → stuur via WhatsApp of mail<br>
+      2. De collega opent de link, vult wensen in en drukt op "Versturen"<br>
+      3. De wensen verschijnen automatisch in jouw Wensen-tab</p>
+    </div>
+    <div class="space-y-sm">${cards}</div>
+  </div>`;
+}
+function copyLink(id,link){navigator.clipboard?.writeText(link).then(()=>{const b=document.getElementById(`copybtn-${id}`);if(b){b.textContent="✓ Gekopieerd";b.style.background="#065f46";b.style.color="white";setTimeout(()=>{b.textContent="Kopieer link";b.style.background="";b.style.color=""},2000)}})}
+
+// ─── WENSEN OVERZICHT ─────────────────────────────────────────────────────────
+function renderWensenOverzicht(){
+  const days=getDays(S.year,S.month);
+  const thead=`<tr><th class="col-header">Collega</th>${days.map(d=>{const dow=d.getDay();return`<th class="${dow===0?"sun":dow===6?"sat":""}"><div>${DAYS_NL[(dow+6)%7]}</div><div style="font-weight:800;color:var(--text)">${d.getDate()}</div></th>`}).join("")}</tr>`;
+  const tbody=S.colleagues.map(col=>{
+    const filled=days.filter(d=>S.wishes[`${col.id}-${d.getDate()}`]).length;
+    const cells=days.map(d=>{const w=S.wishes[`${col.id}-${d.getDate()}`]||"";const sh=SHIFTS[w];return`<td>${w?`<span class="shift-cell" style="background:${sh?.color||"#334155"}22;color:${sh?.color||"#94a3b8"}">${w==="V"?"✕":w}</span>`:`<span style="color:var(--text3);font-size:10px">–</span>`}</td>`}).join("");
+    return`<tr><td class="row-header"><div style="display:flex;align-items:center;gap:7px">${av(col,22)}<div><div style="font-size:12px;font-weight:600">${col.name.split(" ")[0]}</div><div style="font-size:10px;color:${filled>0?"var(--green)":"var(--text3)"}">${filled>0?`${filled} dagen`:"Leeg"}</div></div></div></td>${cells}</tr>`;
+  }).join("");
+  return`<div class="space-y">
+    <div><div class="h2">Wensen overzicht</div><div class="subtext capitalize">${mName(S.year,S.month)}</div></div>
+    <div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>
+    <p style="font-size:11px;color:var(--text3);text-align:center">Groen = ingevuld door collega</p>
+  </div>`;
+}
+
+// ─── PLANNING ─────────────────────────────────────────────────────────────────
+function renderPlanning(){
+  const days=getDays(S.year,S.month);
+  // Weekday defaults editor
+  const wdRows=DAYS_NL.map((day,idx)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;min-width:80px;font-weight:600">${day}</span>
+      <label style="font-size:12px;color:var(--text2)">Ochtend:</label>
+      <select style="width:54px" onchange="setWeekdayDefault(${idx},'O',+this.value)">
+        ${[2,3,4,5].map(n=>`<option value="${n}" ${(S.weekdayDefaults.O[idx]??4)===n?"selected":""}>${n}</option>`).join("")}
+      </select>
+      <label style="font-size:12px;color:var(--text2)">Avond:</label>
+      <select style="width:54px" onchange="setWeekdayDefault(${idx},'A',+this.value)">
+        ${[1,2].map(n=>`<option value="${n}" ${(S.weekdayDefaults.A[idx]??1)===n?"selected":""}>${n}</option>`).join("")}
+      </select>
+    </div>`).join("");
+
+  // Per-day override grid
+  const dcHtml=days.map(d=>{
+    const dow=d.getDay();
+    const slots=getSlots(d);
+    const isSat=dow===6,isSun=dow===0;
+    return`<div class="day-cfg" style="background:${isSun?"rgba(254,226,226,.4)":isSat?"rgba(255,237,213,.4)":"white"};border:1px solid var(--border);border-radius:8px;padding:5px 4px">
+      <span style="font-size:9px;color:var(--text3)">${DAYS_NL[(dow+6)%7]}</span>
+      <span class="dnum">${d.getDate()}</span>
+      <select title="Ochtend" onchange="setDayConfig(${d.getDate()},'morning',+this.value)">
+        ${[2,3,4,5].map(n=>`<option value="${n}" ${slots.morning===n?"selected":""}>${n}O</option>`).join("")}
+      </select>
+      <select title="Avond" onchange="setDayConfig(${d.getDate()},'evening',+this.value)">
+        ${[1,2].map(n=>`<option value="${n}" ${slots.evening===n?"selected":""}>${n}A</option>`).join("")}
+      </select>
+    </div>`;
+  }).join("");
+  let schedHtml="";
+  if(S.schedule){
+    const sc=S.schedule;
+    const warn=(sc.warnings||[]).length>0?`<div class="warn-box"><div class="warn-title">⚠ Aandachtspunten</div>${sc.warnings.map(w=>`<p>${w}</p>`).join("")}</div>`:"";
+    const stats=`<div class="stats-grid">${Object.entries(sc.stats||{}).map(([name,st])=>{const col=S.colleagues.find(c=>c.name===name);return`<div class="stat-card"><div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;margin-bottom:6px">${col?av(col,22):""}<span>${name.split(" ")[0]}</span></div><div style="display:flex;gap:8px;font-size:11px">${["O","A","V"].map(s=>`<span style="color:${SHIFTS[s].color}"><strong>${st[s]||0}</strong><span style="opacity:.6"> ${s==="V"?"✕":s}</span></span>`).join("")}</div></div>`}).join("")}</div>`;
+    const thead=`<tr><th class="col-header">Collega</th>${days.map(d=>{const dow=d.getDay();return`<th class="${dow===0?"sun":dow===6?"sat":""}"><div>${DAYS_NL[(dow+6)%7]}</div><div style="font-weight:800;color:var(--text)">${d.getDate()}</div></th>`}).join("")}</tr>`;
+    const tbody=S.colleagues.map(col=>{const cells=days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const shift=ds[col.name]||"?";const wish=S.wishes[`${col.id}-${d.getDate()}`];const conflict=wish&&wish!==""&&wish!==shift&&shift!=="?";return`<td class="${conflict?"conflict-bg":""}" onclick="editCell(${d.getDate()},'${col.name.replace(/'/g,"\\'")}','${shift}')">${shiftBadge(shift)}${conflict?`<span style="color:var(--red);font-size:9px">!</span>`:""}</td>`}).join("");return`<tr><td class="row-header">${av(col,22)}<span style="font-size:12px;font-weight:600;margin-left:6px">${col.name.split(" ")[0]}</span></td>${cells}</tr>`}).join("");
+    const totals=`<tr class="totals-row"><td class="row-header" style="font-size:11px;color:var(--text2);font-weight:600">Rondes</td>${days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const sl=getSlots(d);const o=Object.values(ds).filter(s=>s==="O").length;const a=Object.values(ds).filter(s=>s==="A").length;const oOk=o===sl.morning,aOk=a===sl.evening;return`<td><div style="color:${oOk?SHIFTS.O.color:"var(--red)"};font-weight:${oOk?"normal":"800"};">${o}/${sl.morning}O</div><div style="color:${aOk?SHIFTS.A.color:"var(--red)"};font-weight:${aOk?"normal":"800"};">${a}/${sl.evening}A</div></td>`}).join("")}</tr>`;
+    schedHtml=`${warn}${stats}<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}${totals}</tbody></table></div><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Klik op cel om manueel aan te passen</p>`;
+  }
+  return`<div class="space-y">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div><div class="h2">Planning genereren</div><div class="subtext capitalize">${mName(S.year,S.month)}</div></div>
+      <button class="btn btn-gradient" onclick="generatePlanning()" ${S.generating?"disabled":""}>${S.generating?`<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Planning maken...`:"✦ Genereer planning"}</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">Standaard rondes per weekdag</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Stel de standaard in — je kan nog per dag afwijken hieronder</p>
+      ${wdRows}
+      <div style="font-weight:700;font-size:14px;margin:16px 0 4px">Aanpassen per dag (deze maand)</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Overschrijf hier uitzonderingen voor specifieke dagen</p>
+      <div class="day-config-grid">${dcHtml}</div>
+    </div>
+    ${S.planError?`<div style="background:rgba(127,29,29,.2);border:1px solid var(--red);border-radius:12px;padding:14px;color:#fca5a5;font-size:13px">${S.planError}</div>`:""}
+    ${schedHtml}
+  </div>`;
+}
+function setDayConfig(day,type,val){
+  if(!S.dayConfigs[day])S.dayConfigs[day]={};
+  S.dayConfigs[day][type]=val;
+  renderActiveTab();
+}
+function setWeekdayDefault(idx,type,val){
+  S.weekdayDefaults[type][idx]=val;
+  renderActiveTab();
+}
+function editCell(day,name,cur){const s=prompt(`Dienst voor ${name} op dag ${day}. Voer in: O, A of V`,cur);if(!s)return;const v=s.trim().toUpperCase();if(!["O","A","V","?"].includes(v)){alert("Gebruik O, A of V");return}if(!S.schedule.schedule[day])S.schedule.schedule[day]={};S.schedule.schedule[String(day)]=S.schedule.schedule[String(day)]||{};S.schedule.schedule[day][name]=v;S.schedule.schedule[String(day)][name]=v;renderActiveTab()}
+
+async function generatePlanning(){
+  S.generating=true;S.planError=null;renderActiveTab();
+  const days=getDays(S.year,S.month);
+  const ws={};
+  S.colleagues.forEach(col=>{
+    const blocked={};
+    Object.entries(col.blockedShifts||{}).forEach(([idx,shifts])=>{blocked[DAYS_FULL[idx]]=shifts});
+    ws[col.name]={type:col.type,maxConsecMorning:col.maxConsec,maxShiftsPerMonth:col.maxMonth||22,blockedShifts:blocked,wishes:{}};
+    days.forEach(d=>{const w=S.wishes[`${col.id}-${d.getDate()}`];if(w)ws[col.name].wishes[d.getDate()]=w});
+  });
+  const cfg=days.map(d=>{const sl=getSlots(d);return{day:d.getDate(),dow:DAYS_NL[(d.getDay()+6)%7],morningSlots:sl.morning,eveningSlots:sl.evening}});
+  const prompt=`Je bent een planning-assistent voor een medisch/zorg team.
+Maak een maandplanning voor ${mName(S.year,S.month)}.
+
+TEAM:
+${JSON.stringify(ws,null,2)}
+
+DAG-CONFIGURATIE:
+${JSON.stringify(cfg,null,2)}
+
+WENSEN: O=ochtend, A=avond, V=vrij, leeg=geen voorkeur
+
+REGELS:
+1. Fulltime collega's hebben absolute prioriteit
+2. Bijbaners worden ingepland als het past
+3. Respecteer maxConsecMorning (max ochtenden op rij)
+4. Respecteer maxShiftsPerMonth (max werkdagen per maand)
+5. Respecteer blockedShifts: als een dag geblokkeerd is voor een dienst, plan die persoon NOOIT die dienst op die weekdag
+6. V-wens = vrij tenzij absoluut onmogelijk
+7. Verdeel avonddiensten eerlijk
+8. Leeg = kies O of A naargelang de nood van die dag
+9. Eindresultaat altijd O, A of V per persoon per dag
+10. Elke dag: precies morningSlots personen O, precies eveningSlots persoon/personen A
+
+Geef ALLEEN JSON, geen uitleg:
+{"schedule":{"1":{"Naam":"O"},...},"stats":{"Naam":{"O":12,"A":4,"V":14},...},"warnings":[]}`;
+
+  try{
+    const res=await fetch("/.netlify/functions/planning",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.map(i=>i.text||"").join("")||"";
+    S.schedule=JSON.parse(text.replace(/```json|```/g,"").trim());
+  }catch{S.planError="Kon planning niet genereren. Probeer opnieuw."}
+  S.generating=false;renderActiveTab();
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+async function prevMonth(){let m=S.month-1,y=S.year;if(m<0){m=11;y--}S.month=m;S.year=y;const sw=await fbGet(`wishes-${S.year}-${S.month}`);S.wishes=sw?JSON.parse(sw):{};render()}
+async function nextMonth(){let m=S.month+1,y=S.year;if(m>11){m=0;y++}S.month=m;S.year=y;const sw=await fbGet(`wishes-${S.year}-${S.month}`);S.wishes=sw?JSON.parse(sw):{};render()}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function boot(){
+  const sc=await fbGet("colleagues");
+  if(sc){const parsed=JSON.parse(sc);S.colleagues=parsed.map(c=>({maxMonth:22,blockedShifts:{},...c}))}
+  const wd=await fbGet("weekdayDefaults");
+  if(wd)S.weekdayDefaults=JSON.parse(wd);
+  const sw=await fbGet(`wishes-${S.year}-${S.month}`);
+  if(sw)S.wishes=JSON.parse(sw);
+  document.getElementById("loading").style.display="none";
+  render();
+}
+boot();
+</script>
+</body>
+</html>
