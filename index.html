@@ -350,6 +350,59 @@ function applyDrag(day,colId){
   }
 }
 
+
+function openNote(colId, day, el) {
+  // Remove existing modal if any
+  const existing = document.getElementById("note-modal");
+  if (existing) { existing.remove(); return; }
+  
+  const noteKey = `${colId}-note-${day}`;
+  const currentNote = S.wishes[noteKey] || "";
+  
+  const modal = document.createElement("div");
+  modal.id = "note-modal";
+  modal.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:2px solid #3b82f6;border-radius:14px;padding:18px;z-index:1000;width:min(320px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.15)";
+  
+  const dayNames = ["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
+  const d = new Date(S.year, S.month, day);
+  
+  modal.innerHTML = `
+    <div style="font-weight:700;font-size:14px;color:#1e2d40;margin-bottom:4px">📝 Notitie — ${dayNames[d.getDay()]} ${day}</div>
+    <div style="font-size:12px;color:#4a6080;margin-bottom:10px">Voeg een opmerking toe voor deze dag</div>
+    <textarea id="note-input" style="width:100%;min-height:80px;background:#f7f9ff;border:1.5px solid #d0daea;border-radius:8px;padding:8px;font-size:13px;color:#1e2d40;resize:vertical;outline:none;font-family:inherit"
+      placeholder="Bv. moet om 12u stoppen, kinderen ophalen...">${currentNote}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="saveNote(${colId},${day})" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:8px;padding:8px;font-weight:700;font-size:13px;cursor:pointer">Opslaan</button>
+      <button onclick="clearNote(${colId},${day})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:8px;font-weight:600;font-size:13px;cursor:pointer">Wis</button>
+      <button onclick="document.getElementById('note-modal').remove()" style="background:#f0f4ff;color:#4a6080;border:none;border-radius:8px;padding:8px;font-weight:600;font-size:13px;cursor:pointer">Sluiten</button>
+    </div>`;
+  
+  const overlay = document.createElement("div");
+  overlay.id = "note-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:999";
+  overlay.onclick = () => { modal.remove(); overlay.remove(); };
+  
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+  document.getElementById("note-input").focus();
+}
+
+function saveNote(colId, day) {
+  const val = document.getElementById("note-input").value.trim();
+  const noteKey = `${colId}-note-${day}`;
+  S.wishes = {...S.wishes, [noteKey]: val};
+  document.getElementById("note-modal").remove();
+  document.getElementById("note-overlay").remove();
+  renderCollegaView();
+}
+
+function clearNote(colId, day) {
+  const noteKey = `${colId}-note-${day}`;
+  S.wishes = {...S.wishes, [noteKey]: ""};
+  document.getElementById("note-modal").remove();
+  document.getElementById("note-overlay").remove();
+  renderCollegaView();
+}
 async function submitWishes(){
   const btn=document.querySelector(".submit-btn");
   if(btn){btn.disabled=true;btn.textContent="Versturen..."}
@@ -525,7 +578,7 @@ function renderWensenOverzicht(){
   const thead=`<tr><th class="col-header">Collega</th>${days.map(d=>{const dow=d.getDay();return`<th class="${dow===0?"sun":dow===6?"sat":""}"><div>${DAYS_NL[(dow+6)%7]}</div><div style="font-weight:800;color:var(--text)">${d.getDate()}</div></th>`}).join("")}</tr>`;
   const tbody=S.colleagues.map(col=>{
     const filled=days.filter(d=>S.wishes[`${col.id}-${d.getDate()}`]).length;
-    const cells=days.map(d=>{const w=S.wishes[`${col.id}-${d.getDate()}`]||"";const sh=SHIFTS[w];return`<td>${w?`<span class="shift-cell" style="background:${sh?.color||"#334155"}22;color:${sh?.color||"#94a3b8"}">${w==="V"?"✕":w}</span>`:`<span style="color:var(--text3);font-size:10px">–</span>`}</td>`}).join("");
+    const cells=days.map(d=>{const w=S.wishes[`${col.id}-${d.getDate()}`]||"";const note=S.wishes[`${col.id}-note-${d.getDate()}`]||"";const sh=SHIFTS[w];return`<td title="${note?'📝 '+note:''}" style="${note?'background:#eff6ff':''}">${w?`<span class="shift-cell" style="background:${sh?.color||"#334155"}22;color:${sh?.color||"#94a3b8"}">${w==="V"?"✕":w}</span>`:`<span style="color:var(--text3);font-size:10px">–</span>`}${note?`<div style="font-size:8px;color:#3b82f6;margin-top:1px">📝</div>`:""}</td>`}).join("");
     return`<tr><td class="row-header"><div style="display:flex;align-items:center;gap:7px">${av(col,22)}<div><div style="font-size:12px;font-weight:600">${col.name.split(" ")[0]}</div><div style="font-size:10px;color:${filled>0?"var(--green)":"var(--text3)"}">${filled>0?`${filled} dagen`:"Leeg"}</div></div></div></td>${cells}</tr>`;
   }).join("");
   return`<div class="space-y">
