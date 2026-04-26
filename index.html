@@ -573,8 +573,8 @@ function renderPlanning(){
       const dow = d.getDay();
       const dowIdx = (dow+6)%7;
       const ds = sc.schedule?.[dayNum] || sc.schedule?.[String(dayNum)] || {};
-      const mSlots = getDayM(dayNum, d);
-      const eSlots = getDayE(dayNum, d);
+      const sl = getSlots(d); const mSlots = sl.morning;
+      const eSlots = sl.evening;
       
       // Get workers
       const morningWorkers = Object.entries(ds).filter(([n,s])=>s==="O").map(([n])=>n);
