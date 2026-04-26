@@ -253,6 +253,8 @@ function renderCollegaView(){
     const sh=SHIFTS[wish];
     const color=sh?sh.color:"#475569";
     const isSun=dow===0;
+    const noteKey2=`${col.id}-note-${d.getDate()}`;
+    const note2=S.wishes[noteKey2]||"";
     return`<div class="cal-cell ${isSun?"sun":""}"
       data-day="${d.getDate()}" data-colid="${col.id}" data-blocked='${JSON.stringify(blocked)}'
       onmousedown="startDrag(event,${d.getDate()},${col.id})"
@@ -263,6 +265,7 @@ function renderCollegaView(){
       <div class="day-num">${d.getDate()}</div>
       <div class="wish-val" style="color:${color}">${wish==="V"?"✕":wish||"–"}</div>
       ${blocked.length?`<div style="font-size:8px;color:var(--red);margin-top:1px">${blocked.map(b=>`${b}✗`).join(" ")}</div>`:""}
+      <div onclick="event.stopPropagation();openNote(${col.id},${d.getDate()})" style="font-size:10px;cursor:pointer;color:${note2?"#3b82f6":"#b8c8e0"};margin-top:2px;line-height:1" title="${note2||"Notitie toevoegen"}">${note2?"📝":"✏️"}</div>
     </div>`;
   }).join("");
 
@@ -627,8 +630,8 @@ function renderPlanning(){
     const warn=(sc.warnings||[]).length>0?`<div class="warn-box"><div class="warn-title">⚠ Aandachtspunten</div>${sc.warnings.map(w=>`<p>${w}</p>`).join("")}</div>`:"";
     const stats=`<div class="stats-grid">${Object.entries(sc.stats||{}).map(([name,st])=>{const col=S.colleagues.find(c=>c.name===name);return`<div class="stat-card"><div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;margin-bottom:6px">${col?av(col,22):""}<span>${name.split(" ")[0]}</span></div><div style="display:flex;gap:8px;font-size:11px">${["O","A","V"].map(s=>`<span style="color:${SHIFTS[s].color}"><strong>${st[s]||0}</strong><span style="opacity:.6"> ${s==="V"?"✕":s}</span></span>`).join("")}</div></div>`}).join("")}</div>`;
     const thead=`<tr><th class="col-header">Collega</th>${days.map(d=>{const dow=d.getDay();return`<th class="${dow===0?"sun":dow===6?"sat":""}"><div>${DAYS_NL[(dow+6)%7]}</div><div style="font-weight:800;color:var(--text)">${d.getDate()}</div></th>`}).join("")}</tr>`;
-    const tbody=S.colleagues.map(col=>{const cells=days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const shift=ds[col.name]||"?";const wish=S.wishes[`${col.id}-${d.getDate()}`];const conflict=wish&&wish!==""&&wish!==shift&&shift!=="?";return`<td class="${conflict?"conflict-bg":""}" onclick="editCell(${d.getDate()},'${col.name.replace(/'/g,"\\'")}','${shift}')">${shiftBadge(shift)}${conflict?`<span style="color:var(--red);font-size:9px">!</span>`:""}</td>`}).join("");return`<tr><td class="row-header">${av(col,22)}<span style="font-size:12px;font-weight:600;margin-left:6px">${col.name.split(" ")[0]}</span></td>${cells}</tr>`}).join("");
-    const totals=`<tr class="totals-row"><td class="row-header" style="font-size:11px;color:var(--text2);font-weight:600">Rondes</td>${days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const sl=getSlots(d);const o=Object.values(ds).filter(s=>s==="O").length;const a=Object.values(ds).filter(s=>s==="A").length;const oOk=o===sl.morning,aOk=a===sl.evening;return`<td><div style="color:${oOk?SHIFTS.O.color:"var(--red)"};font-weight:${oOk?"normal":"800"};">${o}/${sl.morning}O</div><div style="color:${aOk?SHIFTS.A.color:"var(--red)"};font-weight:${aOk?"normal":"800"};">${a}/${sl.evening}A</div></td>`}).join("")}</tr>`;
+    const tbody=S.colleagues.map(col=>{const cells=days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||sc.schedule?.[""+d.getDate()]||{};const shift=ds[col.name]||"?";const wish=S.wishes[`${col.id}-${d.getDate()}`];const conflict=wish&&wish!==""&&wish!==shift&&shift!=="?";return`<td class="${conflict?"conflict-bg":""}" onclick="editCell(${d.getDate()},'${col.name.replace(/'/g,"\\'")}','${shift}')">${shiftBadge(shift)}${conflict?`<span style="color:var(--red);font-size:9px">!</span>`:""}</td>`}).join("");return`<tr><td class="row-header">${av(col,22)}<span style="font-size:12px;font-weight:600;margin-left:6px">${col.name.split(" ")[0]}</span></td>${cells}</tr>`}).join("");
+    const totals=`<tr class="totals-row"><td class="row-header" style="font-size:11px;color:var(--text2);font-weight:600">Rondes</td>${days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||sc.schedule?.[""+d.getDate()]||{};const sl=getSlots(d);const o=Object.values(ds).filter(s=>s==="O").length;const a=Object.values(ds).filter(s=>s==="A").length;const oOk=o===sl.morning,aOk=a===sl.evening;return`<td><div style="color:${oOk?SHIFTS.O.color:"var(--red)"};font-weight:${oOk?"normal":"800"};">${o}/${sl.morning}O</div><div style="color:${aOk?SHIFTS.A.color:"var(--red)"};font-weight:${aOk?"normal":"800"};">${a}/${sl.evening}A</div></td>`}).join("")}</tr>`;
     
     // Build PDF table
     // Find max morning/evening slots across all days
@@ -773,7 +776,14 @@ Geef ALLEEN JSON, geen uitleg:
     const res=await fetch("https://planning-proxy.renva-planning.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
     const data=await res.json();
     const text=data.content?.map(i=>i.text||"").join("")||"";
-    S.schedule=JSON.parse(text.replace(/```json|```/g,"").trim());
+    const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+    // Normalize schedule keys to both string and number
+    if(parsed.schedule){
+      const norm={};
+      Object.entries(parsed.schedule).forEach(([k,v])=>{norm[k]=v;norm[parseInt(k)]=v;});
+      parsed.schedule=norm;
+    }
+    S.schedule=parsed;
   }catch{S.planError="Kon planning niet genereren. Probeer opnieuw."}
   S.generating=false;renderActiveTab();
 }
