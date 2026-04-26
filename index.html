@@ -147,13 +147,15 @@ tr:nth-child(even) td.row-header{background:#f7f9ff}
 .pdf-table th.evening-col { background: #6d28d9; }
 .pdf-table td { padding: 5px 8px; border: 1px solid #d0daea; vertical-align: middle; font-size: 11px; }
 .pdf-table tr:nth-child(even) td { background: #f8faff; }
-.pdf-table tr.weekend-row td { background: #fef3f2; }
-.pdf-table tr.weekend-row td.day-cell { font-weight: 700; color: #dc2626; }
+.pdf-table tr.weekend-row td { background: #fff7ed; }
+.pdf-table tr.weekend-row td.day-cell { font-weight: 700; color: #ea580c; }
 .pdf-table td.day-cell { font-weight: 600; text-transform: capitalize; color: #1e2d40; white-space: nowrap; }
 .pdf-table td.date-cell { font-weight: 800; color: #3b82f6; text-align: center; width: 28px; }
-.pdf-table tr.weekend-row td.date-cell { color: #dc2626; }
+.pdf-table tr.weekend-row td.date-cell { color: #ea580c; }
 .pdf-table td.name-cell { font-weight: 600; color: #1e2d40; }
 .pdf-table td.empty-cell { color: #d0daea; text-align: center; }
+.pdf-table td.evening-cell { background: #f5f3ff; color: #5b21b6; font-weight: 600; }
+.pdf-table td.evening-empty { background: #f5f3ff; color: #c4b5fd; text-align: center; }
 .pdf-footer { margin-top: 12px; font-size: 10px; color: #94a3b8; text-align: right; }
 
 </style>
@@ -603,7 +605,7 @@ function renderPlanning(){
       
       const eCells = Array.from({length:maxE},(_,i)=>{
         const w = eveningWorkers[i];
-        return w ? `<td class="name-cell">${w}</td>` : `<td class="empty-cell">—</td>`;
+        return w ? `<td class="evening-cell">${w}</td>` : `<td class="evening-empty">—</td>`;
       }).join("");
       
       const DAYS_FULL_NL=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
