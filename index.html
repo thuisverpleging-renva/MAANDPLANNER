@@ -126,6 +126,28 @@ tr:nth-child(even) td.row-header{background:#f7f9ff}
 .spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:600px){.grid-2,.grid-3{grid-template-columns:1fr}.month-name{min-width:90px;font-size:12px}.tab{padding:8px 10px;font-size:12px}}
+@media print {
+  .header, .tabs-bar, .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .pdf-view { display: block !important; }
+  .pdf-day-block { break-inside: avoid; }
+}
+.pdf-view { display: none; }
+.pdf-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.pdf-btn:hover { opacity: .9; }
+.pdf-day-block { background: white; border: 1.5px solid #d0daea; border-radius: 12px; padding: 12px; margin-bottom: 10px; break-inside: avoid; }
+.pdf-day-header { font-size: 13px; font-weight: 800; color: #1e2d40; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #e8eef8; display: flex; align-items: center; gap: 8px; }
+.pdf-day-header .date-num { font-size: 22px; font-weight: 900; color: var(--blue); min-width: 32px; }
+.pdf-day-header .date-day { font-size: 12px; color: #4a6080; font-weight: 600; }
+.pdf-rounds { display: grid; gap: 6px; }
+.pdf-round-row { display: flex; align-items: center; gap: 8px; }
+.pdf-round-label { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; min-width: 60px; text-align: center; }
+.pdf-round-label.morning { background: #dbeafe; color: #1d4ed8; }
+.pdf-round-label.evening { background: #ede9fe; color: #6d28d9; }
+.pdf-names { display: flex; flex-wrap: wrap; gap: 4px; }
+.pdf-name-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: #f0f4ff; color: #1e2d40; border: 1px solid #d0daea; }
+.pdf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+
 </style>
 </head>
 <body>
@@ -544,7 +566,69 @@ function renderPlanning(){
     const thead=`<tr><th class="col-header">Collega</th>${days.map(d=>{const dow=d.getDay();return`<th class="${dow===0?"sun":dow===6?"sat":""}"><div>${DAYS_NL[(dow+6)%7]}</div><div style="font-weight:800;color:var(--text)">${d.getDate()}</div></th>`}).join("")}</tr>`;
     const tbody=S.colleagues.map(col=>{const cells=days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const shift=ds[col.name]||"?";const wish=S.wishes[`${col.id}-${d.getDate()}`];const conflict=wish&&wish!==""&&wish!==shift&&shift!=="?";return`<td class="${conflict?"conflict-bg":""}" onclick="editCell(${d.getDate()},'${col.name.replace(/'/g,"\\'")}','${shift}')">${shiftBadge(shift)}${conflict?`<span style="color:var(--red);font-size:9px">!</span>`:""}</td>`}).join("");return`<tr><td class="row-header">${av(col,22)}<span style="font-size:12px;font-weight:600;margin-left:6px">${col.name.split(" ")[0]}</span></td>${cells}</tr>`}).join("");
     const totals=`<tr class="totals-row"><td class="row-header" style="font-size:11px;color:var(--text2);font-weight:600">Rondes</td>${days.map(d=>{const ds=sc.schedule?.[d.getDate()]||sc.schedule?.[String(d.getDate())]||{};const sl=getSlots(d);const o=Object.values(ds).filter(s=>s==="O").length;const a=Object.values(ds).filter(s=>s==="A").length;const oOk=o===sl.morning,aOk=a===sl.evening;return`<td><div style="color:${oOk?SHIFTS.O.color:"var(--red)"};font-weight:${oOk?"normal":"800"};">${o}/${sl.morning}O</div><div style="color:${aOk?SHIFTS.A.color:"var(--red)"};font-weight:${aOk?"normal":"800"};">${a}/${sl.evening}A</div></td>`}).join("")}</tr>`;
-    schedHtml=`${warn}${stats}<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}${totals}</tbody></table></div><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Klik op cel om manueel aan te passen</p>`;
+    
+    // Build PDF day blocks
+    const pdfBlocks = days.map(d => {
+      const dayNum = d.getDate();
+      const dow = d.getDay();
+      const dowIdx = (dow+6)%7;
+      const ds = sc.schedule?.[dayNum] || sc.schedule?.[String(dayNum)] || {};
+      const mSlots = getDayM(dayNum, d);
+      const eSlots = getDayE(dayNum, d);
+      
+      // Get workers
+      const morningWorkers = Object.entries(ds).filter(([n,s])=>s==="O").map(([n])=>n);
+      const eveningWorkers = Object.entries(ds).filter(([n,s])=>s==="A").map(([n])=>n);
+      
+      if(morningWorkers.length===0 && eveningWorkers.length===0) return "";
+      
+      const isSun = dow===0;
+      const isSat = dow===6;
+      const dayColor = isSun?"#ef4444":isSat?"#f59e0b":"#3b82f6";
+      
+      // Morning rounds
+      const mRounds = Array.from({length:mSlots},(_,i)=>{
+        const worker = morningWorkers[i] || "—";
+        const firstName = worker!=="—" ? worker.split(" ")[0] : "—";
+        return `<div class="pdf-round-row">
+          <span class="pdf-round-label morning">Ochtend ${i+1}</span>
+          <div class="pdf-names">${worker!=="—"?`<span class="pdf-name-tag">${firstName}</span>`:`<span style="color:#94a3b8;font-size:11px">—</span>`}</div>
+        </div>`;
+      }).join("");
+      
+      // Evening rounds  
+      const eRounds = Array.from({length:eSlots},(_,i)=>{
+        const worker = eveningWorkers[i] || "—";
+        const firstName = worker!=="—" ? worker.split(" ")[0] : "—";
+        return `<div class="pdf-round-row">
+          <span class="pdf-round-label evening">Avond ${eSlots>1?i+1:""}</span>
+          <div class="pdf-names">${worker!=="—"?`<span class="pdf-name-tag">${firstName}</span>`:`<span style="color:#94a3b8;font-size:11px">—</span>`}</div>
+        </div>`;
+      }).join("");
+
+      return `<div class="pdf-day-block">
+        <div class="pdf-day-header">
+          <span class="date-num" style="color:${dayColor}">${dayNum}</span>
+          <div><div class="date-day">${DAYS_NL[dowIdx]}</div></div>
+        </div>
+        <div class="pdf-rounds">${mRounds}${eRounds}</div>
+      </div>`;
+    }).join("");
+
+    schedHtml=`${warn}
+    <!-- Overzicht tabel -->
+    <div style="font-weight:700;font-size:14px;margin-bottom:8px">Overzicht per collega</div>
+    ${stats}
+    <div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}${totals}</tbody></table></div>
+    <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Klik op cel om manueel aan te passen</p>
+    
+    <!-- PDF Dagblokken -->
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="font-weight:700;font-size:14px">Dagplanning — afdrukbaar overzicht</div>
+      <button class="pdf-btn no-print" onclick="window.print()">🖨️ Afdrukken / Opslaan als PDF</button>
+    </div>
+    <div class="pdf-grid" style="margin-top:12px">${pdfBlocks}</div>`;
+
   }
   return`<div class="space-y">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
