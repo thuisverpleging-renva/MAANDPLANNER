@@ -130,7 +130,8 @@ tr:nth-child(even) td.row-header{background:#f7f9ff}
   body * { visibility: hidden; }
   #pdf-print-area, #pdf-print-area * { visibility: visible; }
   #pdf-print-area { position: absolute; left: 0; top: 0; width: 100%; }
-  @page { margin: 1.5cm; size: A4 landscape; }
+  @page { margin: 1.5cm; size: A4 landscape; margin-header: 0; margin-footer: 0; }
+  head { display: none; }
 }
 .pdf-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .pdf-btn:hover { opacity: .9; }
@@ -273,7 +274,7 @@ function renderCollegaView(){
       <div class="day-num">${d.getDate()}</div>
       <div class="wish-val" style="color:${color}">${wish==="V"?"✕":wish||"–"}</div>
       ${blocked.length?`<div style="font-size:8px;color:var(--red);margin-top:1px">${blocked.map(b=>`${b}✗`).join(" ")}</div>`:""}
-      <div onclick="event.stopPropagation();openNote(${col.id},${d.getDate()})" style="font-size:10px;cursor:pointer;color:${note2?"#3b82f6":"#b8c8e0"};margin-top:2px;line-height:1" title="${note2||"Notitie toevoegen"}">${note2?"📝":"✏️"}</div>
+      ${note2?`<div style="font-size:9px;color:#3b82f6;margin-top:2px;line-height:1;cursor:pointer" onclick="event.stopPropagation();openNote(${col.id},${d.getDate()})" title="${note2}">📝</div>`:""}
     </div>`;
   }).join("");
 
@@ -710,7 +711,7 @@ function renderPlanning(){
         <div class="pdf-month-title" style="font-size:18px;font-weight:800;color:#c0392b;text-transform:capitalize">${mName(S.year,S.month)}</div>
       </div>
       ${pdfTableHtml}
-      <div class="pdf-footer">Gegenereerd op ${new Date().toLocaleDateString("nl-NL")} · PlanAssist</div>
+      
     </div>`;
 
   }
